@@ -18,7 +18,7 @@ Usage
 
 1. **Make your own workspace and build**
 
-    To use this planner, check it out in your local catkin workspace:**
+    To use this planner, check it out in your local catkin workspace:
     ```
     $ cd ~/catkin_ws/src
     $ git clone https://github.com/kangbeenlee/ompl_move_base.git
@@ -37,7 +37,7 @@ Usage
 3. **Use the plugin**
     
     After 2nd step, you can use this plugin together with the move_base node.
-    Then use the plugin in your move_base_parameters.yaml file:
+    Then, use the plugin in your move_base_parameters.yaml file:
     ```
     base_global_planner: ompl_global_planner/OmplGlobalPlanner
     ```
