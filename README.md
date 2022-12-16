@@ -10,7 +10,7 @@ This package provides global path planner plugin based on [OMPL](https://ompl.ka
 The move_base package supports any global planner adhering to the nav_core::BaseGlobalPlanner interface specified in the nav_core package.
 OMPL, the Open Motion Planning Library, consists of many state-of-the-art sampling-based motion planning algorithms.
 
-Attention: This package can be used as global planner in [gazebo-navigation repository](https://github.com/kangbeenlee/gazebo-navigation).
+Attention: This package can be used as global planner in [gazebo_navigation repository](https://github.com/kangbeenlee/gazebo_navigation.git).
 Tip: [Writing A Global Path Planner As Plugin in ROS](http://wiki.ros.org/navigation/Tutorials/Writing%20A%20Global%20Path%20Planner%20As%20Plugin%20in%20ROS)
 
 Usage
