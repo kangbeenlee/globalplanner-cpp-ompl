@@ -1,4 +1,4 @@
-ompl_move_base
+ompl_global_planner
 ==============
 
 Global path planner plugin based on OMPL for move_base package
