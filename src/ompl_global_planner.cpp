@@ -28,6 +28,36 @@ namespace ompl_global_planner
             graph_pub_ = private_nh.advertise<visualization_msgs::Marker>("graph", 1);
             world_model_ = std::make_shared<base_local_planner::CostmapModel>(*costmap_);
 
+            // set state space boudary:
+            ob::RealVectorBounds bounds(2);
+            bounds.setLow(-10);
+            bounds.setHigh(10);
+
+            // bounds.setLow(0, costmap_->getOriginX());
+            // bounds.setLow(1, costmap_->getOriginY());
+            // bounds.setHigh(0, costmap_->getOriginX() + costmap_->getSizeInCellsX() * costmap_->getResolution());
+            // bounds.setHigh(0, costmap_->getOriginY() + costmap_->getSizeInCellsX() * costmap_->getResolution());
+
+            ROS_DEBUG("Check boundary size %.2f, %.2f, %.2f, %.2f", costmap_->getOriginX(), costmap_->getOriginY(),
+                        costmap_->getOriginX() + costmap_->getSizeInCellsX() * costmap_->getResolution(),
+                        costmap_->getOriginY() + costmap_->getSizeInCellsX() * costmap_->getResolution());
+
+            space_->as<ob::RealVectorStateSpace>()->setBounds(bounds);
+            ss_ = std::make_shared<og::SimpleSetup>(space_);
+
+            // get space information
+            si_ = ss_->getSpaceInformation();
+
+            // set state validity checker
+            ss_->setStateValidityChecker(boost::bind(&OmplGlobalPlanner::isStateValid, this, _1));
+
+            // optimize criteria
+            ob::OptimizationObjectivePtr cost_objective(std::make_shared<CostMapObjective>(*this, si_));
+            ob::OptimizationObjectivePtr length_objective(std::make_shared<ob::PathLengthOptimizationObjective>(si_));
+            // ss_->setOptimizationObjective(cost_objective + length_objective);
+            // ss_->setOptimizationObjective(cost_objective);
+            ss_->setOptimizationObjective(length_objective);
+
             initialized_ = true;
             ROS_INFO("Ompl global planner initialized!");
         }
@@ -42,7 +72,7 @@ namespace ompl_global_planner
     {
         double cell_cost = getStateCellCost(state);
 
-        if (cell_cost >= 0 && cell_cost < 80)
+        if (cell_cost >= 0 && cell_cost < 30)
         {
             return true;
         }
@@ -93,30 +123,12 @@ namespace ompl_global_planner
         // goal_tf.getBasis().getEulerYPR(goal_yaw, useless_pitch, useless_roll);
 
         ROS_INFO("Try to find global path with OMPL ...");
-        // set state space boudary:
-        ob::RealVectorBounds bounds(2);
-        bounds.setLow(-10);
-        bounds.setHigh(10);
 
-        // bounds.setLow(0, costmap_->getOriginX());
-        // bounds.setLow(1, costmap_->getOriginY());
-        // bounds.setHigh(0, costmap_->getOriginX() + costmap_->getSizeInCellsX() * costmap_->getResolution());
-        // bounds.setHigh(0, costmap_->getOriginY() + costmap_->getSizeInCellsX() * costmap_->getResolution());
+        ROS_INFO("New goal is received ... OMPL Planner is on intialization ...");
 
-        ROS_DEBUG("Check boundary size %.2f, %.2f, %.2f, %.2f", costmap_->getOriginX(), costmap_->getOriginY(),
-                   costmap_->getOriginX() + costmap_->getSizeInCellsX() * costmap_->getResolution(),
-                   costmap_->getOriginY() + costmap_->getSizeInCellsX() * costmap_->getResolution());
-
-
-        space_->as<ob::RealVectorStateSpace>()->setBounds(bounds);
-
-        ss_ = std::make_shared<og::SimpleSetup>(space_);
-
-        // get space information
-        ob::SpaceInformationPtr si = ss_->getSpaceInformation();
-
-        // set state validity checker
-        ss_->setStateValidityChecker(boost::bind(&OmplGlobalPlanner::isStateValid, this, _1));
+        // rrtx_->initialize();
+        goal_x_ = goal.pose.position.x;
+        goal_y_ = goal.pose.position.y;
 
         ob::ScopedState<>start_state(space_);
         start_state[0] = start.pose.position.x;
@@ -128,18 +140,12 @@ namespace ompl_global_planner
 
         ss_->setStartAndGoalStates(start_state, goal_state);
 
-        // optimize criteria
-        ob::OptimizationObjectivePtr cost_objective(std::make_shared<CostMapObjective>(*this, si));
-        // ob::OptimizationObjectivePtr length_objective(std::make_shared<ob::PathLengthOptimizationObjective>(si));
-        // ss_->setOptimizationObjective(cost_objective + length_objective);
-        ss_->setOptimizationObjective(cost_objective);
-
         // select sampling-based planner for global path
-        // auto planner(std::make_shared<og::RRT>(si));
-        auto planner(std::make_shared<og::RRTstar>(si));
-        // auto planner(std::make_shared<og::RRTXstatic>(si));
+        // auto planner(std::make_shared<og::RRT>(si_));
+        auto planner(std::make_shared<og::RRTstar>(si_));
 
-        planner->setRange(0.3);
+        // 0.3 is enough for rrt and 0.8 is enough for rrt_star
+        planner->setRange(0.8);
         planner->setGoalBias(0.05);
 
         ss_->setPlanner(planner);
@@ -239,6 +245,7 @@ namespace ompl_global_planner
             // find incoming edge (to get parent)
             std::vector<unsigned int> edge_list;
             unsigned int num_edges = planner_data.getIncomingEdges(i, edge_list);
+            unsigned int num = 0;
             // unsigned int num_edges = plannerData.getEdges(i, edge_list);
 
             if (!edge_list.empty())
@@ -254,13 +261,12 @@ namespace ompl_global_planner
 
 
                 edge.header.stamp = ros::Time::now();
-                // edge.ns = "edges";
-                // edge.id = num++;
+                edge.id = num++;
                 
                 edge.pose.orientation.w = 1;
                 edge.color.g = 1.0;
                 edge.color.a = 1.0;
-                edge.scale.x = 0.05;
+                edge.scale.x = 0.03;
 
                 edge.points.push_back(ps);
                 edge.points.push_back(pe);

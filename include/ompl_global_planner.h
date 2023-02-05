@@ -61,7 +61,11 @@ namespace ompl_global_planner
 
         // for ompl planner
         og::SimpleSetupPtr ss_;
+        ob::SpaceInformationPtr si_;
         ob::StateSpacePtr space_;
+        double goal_x_;
+        double goal_y_;
+        
 
         // visualize path
         ros::Publisher plan_pub_;
